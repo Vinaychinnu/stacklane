@@ -1,22 +1,13 @@
 package main
 
-import (
-	
-	"log"
-	"net/http"
-)
-
-func healthHandler(w http.ResponseWriter, r *http.Request){
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("ok"))
-}
+import "log"
 
 func main() {
-	http.HandleFunc("/health", healthHandler)
+	server := NewServer()
 
 	log.Println("Service-registry started on :8082")
 
-	err := http.ListenAndServe(":8082", nil)
+	err := server.Start()
 	if err != nil {
 		log.Fatal(err)
 	}
