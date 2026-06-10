@@ -12,16 +12,18 @@ import (
 
 type Server struct {
 	httpServer *http.Server
+	config     Config
 }
 
-func NewServer() *Server {
+func NewServer(config Config) *Server {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/health", healthHandler)
 
 	return &Server{
+		config: config,
 		httpServer: &http.Server{
-			Addr: ":8082",
+			Addr: ":" + config.Port,
 			Handler: loggingMiddleware(mux),
 		},
 	}
@@ -29,7 +31,7 @@ func NewServer() *Server {
 
 func (s *Server) Start() error {
 	go func() {
-		log.Println("https server listening on :8082")
+		log.Printf("https server listening on :%s", s.config.Port)
 
 		err := s.httpServer.ListenAndServe()
 		if err != nil && err != http.ErrServerClosed{

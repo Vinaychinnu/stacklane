@@ -3,9 +3,11 @@ package main
 import "log"
 
 func main() {
-	server := NewServer()
+	config := LoadConfig()
 
-	log.Println("Service-registry started on :8082")
+	server := NewServer(config)
+
+	log.Printf("Service-registry started on :%s", config.Port)
 
 	err := server.Start()
 	if err != nil {
