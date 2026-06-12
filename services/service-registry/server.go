@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"log"
 	"net/http"
 	"os"
@@ -13,28 +14,35 @@ import (
 type Server struct {
 	httpServer *http.Server
 	config     Config
+	services   []Service
 }
 
 func NewServer(config Config) *Server {
+
+	server := &Server{
+		config:   config,
+		services: []Service{},
+	}
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/health", healthHandler)
+	mux.HandleFunc("/services", server.handleServices)
 
-	return &Server{
-		config: config,
-		httpServer: &http.Server{
-			Addr: ":" + config.Port,
-			Handler: loggingMiddleware(mux),
-		},
+	server.httpServer = &http.Server{
+		Addr:    ":" + config.Port,
+		Handler: loggingMiddleware(mux),
 	}
+
+	return server
+
 }
 
 func (s *Server) Start() error {
 	go func() {
-		log.Printf("https server listening on :%s", s.config.Port)
+		log.Printf("http server listening on :%s", s.config.Port)
 
 		err := s.httpServer.ListenAndServe()
-		if err != nil && err != http.ErrServerClosed{
+		if err != nil && err != http.ErrServerClosed {
 			log.Fatal(err)
 		}
 	}()
@@ -57,14 +65,50 @@ func (s *Server) waitForShutdown() {
 	defer cancel()
 
 	err := s.httpServer.Shutdown(ctx)
-	if err != nil{
+	if err != nil {
 		log.Fatal(err)
 	}
 
 	log.Println("server stopped gracefully")
 }
 
-func healthHandler(w http.ResponseWriter, r *http.Request){
+func (s *Server) handleServices(w http.ResponseWriter, r *http.Request) {
+
+	switch r.Method {
+
+	case http.MethodGet:
+		s.listServices(w)
+
+	case http.MethodPost:
+		s.registerService(w, r)
+
+	default:
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+	}
+}
+
+func (s *Server) registerService(w http.ResponseWriter, r *http.Request) {
+
+	var service Service
+	err := json.NewDecoder(r.Body).Decode(&service)
+	if err != nil {
+		http.Error(w, "invalid request", http.StatusBadRequest)
+		return
+	}
+
+	s.services = append(s.services, service)
+
+	w.WriteHeader(http.StatusCreated)
+
+}
+
+func (s *Server) listServices(w http.ResponseWriter) {
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(s.services)
+}
+
+func healthHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("ok"))
 }

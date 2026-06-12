@@ -13,7 +13,7 @@ func LoadConfig() Config {
 		port = "8082"
 	}
 
-	return Config {
+	return Config{
 		Port: port,
 	}
 }
