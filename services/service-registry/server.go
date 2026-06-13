@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 )
@@ -93,6 +94,16 @@ func (s *Server) registerService(w http.ResponseWriter, r *http.Request) {
 	err := json.NewDecoder(r.Body).Decode(&service)
 	if err != nil {
 		http.Error(w, "invalid request", http.StatusBadRequest)
+		return
+	}
+
+	if strings.TrimSpace(service.Name) == "" {
+		http.Error(w, "service name is required", http.StatusBadRequest)
+		return
+	}
+
+	if strings.TrimSpace(service.Team) == "" {
+		http.Error(w, "service team is required", http.StatusBadRequest)
 		return
 	}
 
