@@ -28,6 +28,7 @@ func NewServer(config Config) *Server {
 
 	mux.HandleFunc("/health", healthHandler)
 	mux.HandleFunc("/services", server.handleServices)
+	mux.HandleFunc("/services/", server.handleServices)
 
 	server.httpServer = &http.Server{
 		Addr:    ":" + config.Port,
@@ -75,6 +76,11 @@ func (s *Server) waitForShutdown() {
 
 func (s *Server) handleServices(w http.ResponseWriter, r *http.Request) {
 
+	if r.Method == http.MethodGet && r.URL.Path != "/services" {
+		s.getService(w, r)
+		return
+	}
+
 	switch r.Method {
 
 	case http.MethodGet:
@@ -117,6 +123,32 @@ func (s *Server) listServices(w http.ResponseWriter) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(s.services)
+}
+
+func (s *Server) getService(w http.ResponseWriter, r *http.Request) {
+
+	serviceName := strings.TrimPrefix(
+		r.URL.Path,
+		"/services/",
+	)
+
+	for _, service := range s.services {
+		if service.Name == serviceName {
+			w.Header().Set(
+				"Content-Type",
+				"application/json",
+			)
+
+			json.NewEncoder(w).Encode(service)
+
+			return
+		}
+	}
+
+	http.Error(
+		w,
+		"service not found",
+		http.StatusNotFound)
 }
 
 func healthHandler(w http.ResponseWriter, r *http.Request) {
